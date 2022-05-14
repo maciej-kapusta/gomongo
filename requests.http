@@ -1,0 +1,13 @@
+GET http://localhost:3000/
+
+###
+POST http://localhost:3000/doc
+Content-Type: application/json
+
+{
+  "name": "doc1",
+  "info": "some information"
+}
+
+###
+GET http://localhost:3000/doc/627fabfb22f9f58a0f71d0a5
