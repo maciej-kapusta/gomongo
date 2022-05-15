@@ -7,17 +7,21 @@ import (
 )
 
 func main() {
-
-	server, err := web.New(&config.Config{
+	cfg := &config.Config{
 		Port:     "3000",
 		MongoDb:  "docs",
 		MongoUri: "mongodb://localhost:27017",
-	})
-	if err != nil {
-		log.Fatal().Msg(err.Error())
 	}
-	err = server.Serve()
+	server, err := web.SetupAll(cfg)
 	if err != nil {
-		log.Fatal().Msg(err.Error())
+		fatal(err)
 	}
+	err = server.Run(":" + cfg.Port)
+	if err != nil {
+		fatal(err)
+	}
+}
+
+func fatal(err error) {
+	log.Fatal().Msg(err.Error())
 }

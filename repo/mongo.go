@@ -27,9 +27,15 @@ func Connect[T any](uri, db, collectionName string) (Repo[T], error) {
 	if err != nil {
 		return nil, err
 	}
-
+	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	err = client.Ping(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
 	database := client.Database(db)
 	collection := database.Collection(collectionName)
+
 	return &MongoRepo[T]{
 		client:     client,
 		database:   database,
@@ -51,13 +57,10 @@ func (m *MongoRepo[T]) ReadObject(id string) (*T, error) {
 		return nil, err
 	}
 
-	cursor, err := m.collection.Find(ctx, primitive.M{"_id": objectID})
-	if err != nil {
-		return nil, err
-	}
+	result := m.collection.FindOne(ctx, primitive.M{"_id": objectID})
 
 	var t T
-	err = cursor.Decode(&t)
+	err = result.Decode(&t)
 	if err != nil {
 		return nil, err
 	}

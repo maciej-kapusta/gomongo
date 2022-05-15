@@ -3,34 +3,43 @@ package web
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/maciej-kapusta/gomongo/config"
+	"github.com/maciej-kapusta/gomongo/repo"
 )
 
-type Server struct {
-	port       string
-	engine     *gin.Engine
-	controller *DocController
-}
-
-func New(cfg *config.Config) (*Server, error) {
-	controller, err := NewDocController(cfg)
+func SetupAll(cfg *config.Config) (*gin.Engine, error) {
+	mongoRepo, err := repo.Connect[Doc](cfg.MongoUri, cfg.MongoDb, "docs")
+	if err != nil {
+		return nil, err
+	}
+	handler := NewDocController(mongoRepo)
 	if err != nil {
 		return nil, err
 	}
 
-	r := gin.Default()
-	r.POST("/doc", controller.PostDoc)
-	r.GET("/doc/:doc", controller.ReadDoc)
-	r.GET("/", func(c *gin.Context) {
-		c.String(200, "ok")
-	})
-	return &Server{
-		controller: controller,
-		engine:     r,
-		port:       cfg.Port,
-	}, nil
+	server := setupServer(handler)
+	return server, nil
 }
 
-func (s *Server) Serve() error {
-	port := ":" + s.port
-	return s.engine.Run(port)
+func setupServer(handler *DocHandler) *gin.Engine {
+
+	r := gin.Default()
+	r.Use(errorHandler)
+
+	r.POST("/doc", handler.PostDoc)
+	r.GET("/doc/:doc", handler.ReadDoc)
+
+	r.GET("/", func(c *gin.Context) {
+		c.JSON(200, gin.H{"status": "ok"})
+	})
+
+	return r
+}
+
+func errorHandler(c *gin.Context) {
+	c.Next()
+	last := c.Errors.Last()
+	if last != nil {
+		c.Status(500)
+		_, _ = c.Writer.Write([]byte(last.Error()))
+	}
 }
